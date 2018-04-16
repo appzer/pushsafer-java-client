@@ -18,14 +18,14 @@ import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 import static staygrounded.pushsafer.client.PushsaferClientFactory.pushsaferClientWithConfiguration;
-import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.ErrorReason.*;
-import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.Result.FAILURE;
-import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.Result.SUCCESS;
-import static staygrounded.pushsafer.client.domain.TestMessageApiResponseBuilder.*;
 import static staygrounded.pushsafer.client.domain.PushNotification.Icon.ICON_1;
 import static staygrounded.pushsafer.client.domain.PushNotification.Sound.Silent;
 import static staygrounded.pushsafer.client.domain.PushNotification.Vibration.SETTING_1;
 import static staygrounded.pushsafer.client.domain.PushNotificationBuilder.newPushNotification;
+import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.ErrorReason.*;
+import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.Result.FAILURE;
+import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.Result.SUCCESS;
+import static staygrounded.pushsafer.client.domain.TestMessageApiResponseBuilder.*;
 import static uk.staygrounded.httpstubby.matchers.request.RequestHeaderEqualsMatcher.requestHeaderContains;
 import static uk.staygrounded.httpstubby.matchers.request.RequestMethodMatcher.forAPostRequest;
 import static uk.staygrounded.httpstubby.matchers.request.RequestUriMatcher.uriEqualTo;
@@ -44,10 +44,7 @@ import static uk.staygrounded.httpstubby.server.response.HttpStatus.Code.OK;
 public class PushsaferClientTest {
 
     private final int pushsaferMessageApiPortNumber = nextAvailablePortNumber();
-    private final PushsaferClientConfiguration testPushsaferClientConfiguration =
-            () -> URI.create(format("http://localhost:%d", pushsaferMessageApiPortNumber));
-
-    private PushsaferClient underTest = pushsaferClientWithConfiguration("some-private-key", testPushsaferClientConfiguration);
+    private final PushsaferClient underTest = pushsaferClientWithConfiguration("some-private-key", testPushsaferClientConfiguration());
     private HttpStubbyServer fakePushsaferServer;
     private SendPushNotificationResponse sendPushNotificationResponse;
 
@@ -124,6 +121,24 @@ public class PushsaferClientTest {
 
         assertThat(sendPushNotificationResponse.getResult(), is(SUCCESS));
         assertThat(sendPushNotificationResponse.getErrorReason(), nullValue());
+    }
+
+    @Test
+    public void returnsFailureWithErrorCodeRequestTimedOut() throws Exception {
+
+        givenThePushsaferServerWillTimeout();
+
+        when(underTest.sendPushNotification(newPushNotification()
+                .withMessage("some-message")
+                .withDevice("some-device-name")
+                .build()));
+
+        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+                uriEqualTo("/api"),
+                forAPostRequest()));
+
+        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
+        assertThat(sendPushNotificationResponse.getErrorReason(), is(REQUEST_TIMED_OUT));
     }
 
     @Test
@@ -242,8 +257,31 @@ public class PushsaferClientTest {
         fakePushsaferServer.willReturn(responseOf(statusCode).withBody(responseBody));
     }
 
+    private void givenThePushsaferServerWillTimeout() {
+        fakePushsaferServer.willReturn(responseOf(OK).withLatency(Duration.ofSeconds(20)));
+    }
+
     private void when(SendPushNotificationResponse sendPushNotificationResponse) {
         this.sendPushNotificationResponse = sendPushNotificationResponse;
+    }
+
+    private PushsaferClientConfiguration testPushsaferClientConfiguration() {
+        return new PushsaferClientConfiguration() {
+            @Override
+            public URI pushsaferBaseUrl() {
+                return URI.create(format("http://localhost:%d", pushsaferMessageApiPortNumber));
+            }
+
+            @Override
+            public Duration connectionTimeoutDuration() {
+                return Duration.ofSeconds(1);
+            }
+
+            @Override
+            public Duration responseTimeoutDuration() {
+                return Duration.ofSeconds(1);
+            }
+        };
     }
 
 }

@@ -3,6 +3,7 @@ package staygrounded.pushsafer.client;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -13,6 +14,7 @@ import staygrounded.pushsafer.client.configuration.PushsaferClientConfiguration;
 import staygrounded.pushsafer.client.domain.PushNotification;
 import staygrounded.pushsafer.client.domain.SendPushNotificationResponse;
 
+import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,13 +34,14 @@ class DefaultPushsaferClient implements PushsaferClient {
 
     private final String privateKey;
     private final PushsaferClientConfiguration configuration;
-    private final HttpClient httpClient = HttpClientBuilder.create().build();
+    private final HttpClient httpClient;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPushsaferClient.class);
 
     DefaultPushsaferClient(String privateKey, PushsaferClientConfiguration configuration) {
         this.privateKey = requireNonNull(privateKey, "privateKey must not be null");
         this.configuration = configuration;
+        this.httpClient = HttpClientBuilder.create().disableAutomaticRetries().build();
     }
 
     @Override
@@ -61,6 +64,12 @@ class DefaultPushsaferClient implements PushsaferClient {
         post.addHeader(CONTENT_TYPE, APPLICATION_FORM_URLENCODED.getMimeType());
         post.setEntity(new UrlEncodedFormEntity(urlParameters));
 
+        final RequestConfig.Builder requestConfig = RequestConfig.custom();
+        requestConfig.setConnectTimeout((int) configuration.connectionTimeoutDuration().toMillis());
+        requestConfig.setConnectionRequestTimeout((int) configuration.connectionTimeoutDuration().toMillis());
+        requestConfig.setSocketTimeout((int) configuration.responseTimeoutDuration().toMillis());
+        post.setConfig(requestConfig.build());
+
         try {
             LOGGER.info("Sending Push Notification: {}", pushNotification);
             final HttpResponse response = httpClient.execute(post);
@@ -77,6 +86,8 @@ class DefaultPushsaferClient implements PushsaferClient {
                 return failureResponse(EXCEEDED_API_CALLS_QUOTA);
             }
             throw new RuntimeException("Unknown error code: " + response.getStatusLine().getStatusCode());
+        } catch (SocketTimeoutException ste) {
+            return failureResponse(REQUEST_TIMED_OUT);
         } catch (Exception ex) {
             return failureResponse(UNKNOWN);
         }

@@ -42,6 +42,7 @@ public class SendPushNotificationResponse {
         INVALID_DEVICE,
         INVALID_DEVICE_GROUP,
         EXCEEDED_API_CALLS_QUOTA,
+        REQUEST_TIMED_OUT,
         UNKNOWN
     }
 
