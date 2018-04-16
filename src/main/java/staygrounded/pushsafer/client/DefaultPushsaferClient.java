@@ -14,6 +14,7 @@ import staygrounded.pushsafer.client.configuration.PushsaferClientConfiguration;
 import staygrounded.pushsafer.client.domain.PushNotification;
 import staygrounded.pushsafer.client.domain.SendPushNotificationResponse;
 
+import java.io.UnsupportedEncodingException;
 import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,19 +61,9 @@ class DefaultPushsaferClient implements PushsaferClient {
         pushNotification.getUrlText().ifPresent(urlText -> urlParameters.add(withUrlParameter("ut", urlText)));
         pushNotification.getTimeToLive().ifPresent(timeToLive -> urlParameters.add(withUrlParameter("l", timeToLive.toMinutes())));
 
-        final HttpPost post = new HttpPost(configuration.pushsaferBaseUrl() + "/api");
-        post.addHeader(CONTENT_TYPE, APPLICATION_FORM_URLENCODED.getMimeType());
-        post.setEntity(new UrlEncodedFormEntity(urlParameters));
-
-        final RequestConfig.Builder requestConfig = RequestConfig.custom();
-        requestConfig.setConnectTimeout((int) configuration.connectionTimeoutDuration().toMillis());
-        requestConfig.setConnectionRequestTimeout((int) configuration.connectionTimeoutDuration().toMillis());
-        requestConfig.setSocketTimeout((int) configuration.responseTimeoutDuration().toMillis());
-        post.setConfig(requestConfig.build());
-
         try {
             LOGGER.info("Sending Push Notification: {}", pushNotification);
-            final HttpResponse response = httpClient.execute(post);
+            final HttpResponse response = httpClient.execute(httpPostWithUrlEncodedForm(configuration.pushsaferBaseUrl() + "/api", urlParameters));
 
             if (response.getStatusLine().getStatusCode() == SC_OK) {
                 return successfulResponse();
@@ -91,6 +82,19 @@ class DefaultPushsaferClient implements PushsaferClient {
         } catch (Exception ex) {
             return failureResponse(UNKNOWN);
         }
+    }
+
+    private HttpPost httpPostWithUrlEncodedForm(String requestUri, List<NameValuePair> urlParameters) throws UnsupportedEncodingException {
+        final HttpPost post = new HttpPost(requestUri);
+        post.addHeader(CONTENT_TYPE, APPLICATION_FORM_URLENCODED.getMimeType());
+        post.setEntity(new UrlEncodedFormEntity(urlParameters));
+
+        final RequestConfig.Builder requestConfig = RequestConfig.custom();
+        requestConfig.setConnectTimeout((int) configuration.connectionTimeoutDuration().toMillis());
+        requestConfig.setConnectionRequestTimeout((int) configuration.connectionTimeoutDuration().toMillis());
+        requestConfig.setSocketTimeout((int) configuration.responseTimeoutDuration().toMillis());
+        post.setConfig(requestConfig.build());
+        return post;
     }
 
     private NameValuePair withUrlParameter(String name, String value) {
