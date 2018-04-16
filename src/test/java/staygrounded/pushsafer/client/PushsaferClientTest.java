@@ -5,8 +5,8 @@ import org.junit.Before;
 import org.junit.Test;
 import staygrounded.pushsafer.client.configuration.PushsaferClientConfiguration;
 import staygrounded.pushsafer.client.domain.SendPushNotificationResponse;
-import uk.staygrounded.httpstubby.server.HttpStubbyServer;
-import uk.staygrounded.httpstubby.server.response.HttpStatus.Code;
+import staygrounded.pushsafer.client.fakes.FakePushsaferServer;
+import uk.staygrounded.httpstubby.server.request.HttpRequest;
 
 import java.net.URI;
 import java.net.URL;
@@ -32,25 +32,19 @@ import static uk.staygrounded.httpstubby.matchers.request.RequestUriMatcher.uriE
 import static uk.staygrounded.httpstubby.matchers.request.RequestUrlEncodedFormPayloadMatcher.urlFormPayload;
 import static uk.staygrounded.httpstubby.matchers.request.builder.UrlEncodedFormPayloadMatcherBuilder.aUrlFormMatcher;
 import static uk.staygrounded.httpstubby.server.HttpPortNumberGenerator.nextAvailablePortNumber;
-import static uk.staygrounded.httpstubby.server.HttpServerFactory.httpConfiguration;
-import static uk.staygrounded.httpstubby.server.HttpStubbyServer.stubbyServerWith;
-import static uk.staygrounded.httpstubby.server.response.HttpResponseBuilder.responseOf;
 import static uk.staygrounded.httpstubby.server.response.HttpStatus.Code.INTERNAL_SERVER_ERROR;
 import static uk.staygrounded.httpstubby.server.response.HttpStatus.Code.OK;
 
-/**
- * Created by chrisholly on 04/04/2018.
- */
 public class PushsaferClientTest {
 
     private final int pushsaferMessageApiPortNumber = nextAvailablePortNumber();
+    private final FakePushsaferServer fakePushsaferServer = new FakePushsaferServer(pushsaferMessageApiPortNumber);
     private final PushsaferClient underTest = pushsaferClientWithConfiguration("some-private-key", testPushsaferClientConfiguration());
-    private HttpStubbyServer fakePushsaferServer;
+
     private SendPushNotificationResponse sendPushNotificationResponse;
 
     @Before
     public void setUp() throws Exception {
-        fakePushsaferServer = stubbyServerWith(httpConfiguration(pushsaferMessageApiPortNumber));
         fakePushsaferServer.start();
     }
 
@@ -59,10 +53,11 @@ public class PushsaferClientTest {
         fakePushsaferServer.stop();
     }
 
+
     @Test
     public void returnsSuccessResponseForRequestsWithAllFieldsPopulated() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(OK, successMessageApiJsonResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(OK, successMessageApiJsonResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
@@ -77,7 +72,7 @@ public class PushsaferClientTest {
                 .withTimeToLive(Duration.ofMinutes(5))
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest(),
                 requestHeaderContains("Content-type", "application/x-www-form-urlencoded"),
@@ -102,14 +97,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsSuccessResponseForRequestsWithOnlyRequiredFieldsPopulated() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(OK, successMessageApiJsonResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(OK, successMessageApiJsonResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest(),
                 requestHeaderContains("Content-type", "application/x-www-form-urlencoded"),
@@ -126,14 +121,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeRequestTimedOut() throws Exception {
 
-        givenThePushsaferServerWillTimeout();
+        givenThePushsaferServer().willTimeout();
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -144,14 +139,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeInvalidKeyForStatusCode250() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(250, invalidKeyErrorMessageApiJsonResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(250, invalidKeyErrorMessageApiJsonResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -162,14 +157,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeInvalidKeyForStatusCode255() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(255, invalidKeyErrorMessageApiJsonResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(255, invalidKeyErrorMessageApiJsonResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -180,14 +175,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeInvalidDeviceForStatusCode270() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(270, invalidDeviceErrorMessageApiJsonResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(270, invalidDeviceErrorMessageApiJsonResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -198,14 +193,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeInvalidDeviceGroupForStatusCode275() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(275, invalidDeviceGroupErrorMessageApiResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(275, invalidDeviceGroupErrorMessageApiResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -216,14 +211,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeExceededApiCallsQuotaForStatusCode280() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(280, exceededApiCallsQuotaErrorMessageApiResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(280, exceededApiCallsQuotaErrorMessageApiResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -234,14 +229,14 @@ public class PushsaferClientTest {
     @Test
     public void returnsFailureWithErrorCodeUnknownForStatusCodeAllOtherStatusCodes() throws Exception {
 
-        givenThePushsaferServerWillResponseWithStatusCodeAndBody(INTERNAL_SERVER_ERROR, unknownErrorMessageApiResponse());
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(INTERNAL_SERVER_ERROR, unknownErrorMessageApiResponse());
 
         when(underTest.sendPushNotification(newPushNotification()
                 .withMessage("some-message")
                 .withDevice("some-device-name")
                 .build()));
 
-        assertThat(fakePushsaferServer.httpRequestResponseHistory().lastRequest(), allOf(
+        assertThat(theLastRequestTo(fakePushsaferServer), allOf(
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
@@ -249,20 +244,16 @@ public class PushsaferClientTest {
         assertThat(sendPushNotificationResponse.getErrorReason(), is(UNKNOWN));
     }
 
-    private void givenThePushsaferServerWillResponseWithStatusCodeAndBody(Code code, String responseBody) {
-        fakePushsaferServer.willReturn(responseOf(code).withBody(responseBody));
-    }
-
-    private void givenThePushsaferServerWillResponseWithStatusCodeAndBody(int statusCode, String responseBody) {
-        fakePushsaferServer.willReturn(responseOf(statusCode).withBody(responseBody));
-    }
-
-    private void givenThePushsaferServerWillTimeout() {
-        fakePushsaferServer.willReturn(responseOf(OK).withLatency(Duration.ofSeconds(20)));
+    private FakePushsaferServer givenThePushsaferServer() {
+        return fakePushsaferServer;
     }
 
     private void when(SendPushNotificationResponse sendPushNotificationResponse) {
         this.sendPushNotificationResponse = sendPushNotificationResponse;
+    }
+
+    private HttpRequest theLastRequestTo(FakePushsaferServer fakePushsaferServer) {
+        return fakePushsaferServer.theLastRequest();
     }
 
     private PushsaferClientConfiguration testPushsaferClientConfiguration() {
