@@ -46,7 +46,7 @@ class DefaultPushsaferClient implements PushsaferClient {
     }
 
     @Override
-    public SendPushNotificationResponse sendPushNotification(PushNotification pushNotification) throws Exception {
+    public SendPushNotificationResponse sendPushNotification(PushNotification pushNotification) {
 
         final List<NameValuePair> urlParameters = new ArrayList<>();
         urlParameters.add(withUrlParameter("k", privateKey));

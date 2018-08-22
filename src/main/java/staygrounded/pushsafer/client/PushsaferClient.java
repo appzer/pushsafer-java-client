@@ -8,5 +8,5 @@ import staygrounded.pushsafer.client.domain.PushNotification;
  */
 public interface PushsaferClient {
 
-    SendPushNotificationResponse sendPushNotification(PushNotification pushNotification) throws Exception;
+    SendPushNotificationResponse sendPushNotification(PushNotification pushNotification);
 }
