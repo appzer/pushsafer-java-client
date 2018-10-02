@@ -1,11 +1,11 @@
 package staygrounded.pushsafer.client;
 
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.slf4j.Logger;
@@ -35,7 +35,7 @@ class DefaultPushsaferClient implements PushsaferClient {
 
     private final String privateKey;
     private final PushsaferClientConfiguration configuration;
-    private final HttpClient httpClient;
+    private final CloseableHttpClient httpClient;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DefaultPushsaferClient.class);
 
@@ -61,9 +61,9 @@ class DefaultPushsaferClient implements PushsaferClient {
         pushNotification.getUrlText().ifPresent(urlText -> urlParameters.add(withUrlParameter("ut", urlText)));
         pushNotification.getTimeToLive().ifPresent(timeToLive -> urlParameters.add(withUrlParameter("l", timeToLive.toMinutes())));
 
-        try {
-            LOGGER.info("Sending Push Notification: {}", pushNotification);
-            final HttpResponse response = httpClient.execute(httpPostWithUrlEncodedForm(configuration.pushsaferBaseUrl() + "/api", urlParameters));
+        LOGGER.info("Sending Push Notification: {}", pushNotification);
+        try (final CloseableHttpResponse response =
+                     httpClient.execute(httpPostWithUrlEncodedForm(configuration.pushsaferBaseUrl() + "/api", urlParameters))) {
 
             if (response.getStatusLine().getStatusCode() == SC_OK) {
                 return successfulResponse();
@@ -78,8 +78,10 @@ class DefaultPushsaferClient implements PushsaferClient {
             }
             throw new RuntimeException("Unknown error code: " + response.getStatusLine().getStatusCode());
         } catch (SocketTimeoutException ste) {
+            ste.printStackTrace();
             return failureResponse(REQUEST_TIMED_OUT);
         } catch (Exception ex) {
+            ex.printStackTrace();
             return failureResponse(UNKNOWN);
         }
     }

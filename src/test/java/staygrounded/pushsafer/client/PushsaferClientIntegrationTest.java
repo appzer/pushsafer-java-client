@@ -49,8 +49,8 @@ public class PushsaferClientIntegrationTest {
                 .withTimeToLive(Duration.ofMinutes(5))
                 .build()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(SUCCESS));
-        assertThat(sendPushNotificationResponse.getErrorReason(), nullValue());
+        assertThat(sendPushNotificationResponse.result, is(SUCCESS));
+        assertThat(sendPushNotificationResponse.errorReason , nullValue());
     }
 
     @Test
@@ -72,8 +72,8 @@ public class PushsaferClientIntegrationTest {
                 .withTimeToLive(Duration.ofMinutes(5))
                 .build()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(SUCCESS));
-        assertThat(sendPushNotificationResponse.getErrorReason(), nullValue());
+        assertThat(sendPushNotificationResponse.result, is(SUCCESS));
+        assertThat(sendPushNotificationResponse.errorReason, nullValue());
     }
 
     private void when(SendPushNotificationResponse sendPushNotificationResponse) {

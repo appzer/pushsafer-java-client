@@ -8,8 +8,8 @@ import static staygrounded.pushsafer.client.domain.SendPushNotificationResponse.
  */
 public class SendPushNotificationResponse {
 
-    private final Result result;
-    private final ErrorReason errorReason;
+    public final Result result;
+    public final ErrorReason errorReason;
 
     private SendPushNotificationResponse(Result result, ErrorReason errorReason) {
         this.result = result;
@@ -22,14 +22,6 @@ public class SendPushNotificationResponse {
 
     public static SendPushNotificationResponse failureResponse(ErrorReason errorReason) {
         return new SendPushNotificationResponse(FAILURE, errorReason);
-    }
-
-    public Result getResult() {
-        return result;
-    }
-
-    public ErrorReason getErrorReason() {
-        return errorReason;
     }
 
     public enum Result {

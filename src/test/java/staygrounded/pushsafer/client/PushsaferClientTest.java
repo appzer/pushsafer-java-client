@@ -90,8 +90,8 @@ public class PushsaferClientTest {
                         .withKeyAndValue("l", "5")
                 )));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(SUCCESS));
-        assertThat(sendPushNotificationResponse.getErrorReason(), nullValue());
+        assertThat(sendPushNotificationResponse.result, is(SUCCESS));
+        assertThat(sendPushNotificationResponse.errorReason, nullValue());
     }
 
     @Test
@@ -114,8 +114,23 @@ public class PushsaferClientTest {
                         .withKeyAndValue("d", "some-device-name")
                 )));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(SUCCESS));
-        assertThat(sendPushNotificationResponse.getErrorReason(), nullValue());
+        assertThat(sendPushNotificationResponse.result, is(SUCCESS));
+        assertThat(sendPushNotificationResponse.errorReason, nullValue());
+    }
+
+    @Test
+    public void returnsSuccessResponseForAllRequests() throws Exception {
+        givenThePushsaferServer().willResponseWithStatusCodeAndBody(OK, successMessageApiJsonResponse());
+
+        for (int i = 0; i < 10; i++) {
+            when(underTest.sendPushNotification(newPushNotification()
+                    .withMessage("some-message")
+                    .withDevice("some-device-name")
+                    .build()));
+
+            assertThat(sendPushNotificationResponse.result, is(SUCCESS));
+            assertThat(sendPushNotificationResponse.errorReason, nullValue());
+        }
     }
 
     @Test
@@ -132,8 +147,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(REQUEST_TIMED_OUT));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(REQUEST_TIMED_OUT));
     }
 
     @Test
@@ -150,8 +165,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(INVALID_KEY));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(INVALID_KEY));
     }
 
     @Test
@@ -168,8 +183,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(INVALID_KEY));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(INVALID_KEY));
     }
 
     @Test
@@ -186,8 +201,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(INVALID_DEVICE));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(INVALID_DEVICE));
     }
 
     @Test
@@ -204,8 +219,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(INVALID_DEVICE_GROUP));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(INVALID_DEVICE_GROUP));
     }
 
     @Test
@@ -222,8 +237,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(EXCEEDED_API_CALLS_QUOTA));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(EXCEEDED_API_CALLS_QUOTA));
     }
 
     @Test
@@ -240,8 +255,8 @@ public class PushsaferClientTest {
                 uriEqualTo("/api"),
                 forAPostRequest()));
 
-        assertThat(sendPushNotificationResponse.getResult(), is(FAILURE));
-        assertThat(sendPushNotificationResponse.getErrorReason(), is(UNKNOWN));
+        assertThat(sendPushNotificationResponse.result, is(FAILURE));
+        assertThat(sendPushNotificationResponse.errorReason, is(UNKNOWN));
     }
 
     private FakePushsaferServer givenThePushsaferServer() {
